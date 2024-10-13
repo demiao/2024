@@ -1,8 +1,9 @@
 import random
 import ttkbootstrap as ttk
-from tkinter import Scrollbar, messagebox
+from tkinter import Scrollbar, messagebox, filedialog
 import tkinter as tk
 import pandas as pd
+import chardet
 
 
 class OrderQueryPage:
@@ -39,18 +40,73 @@ class OrderQueryPage:
         # 2.Luftschall-Summe-Straffrequenz:
         # 3.Luftschall-Summe-Endfrequenz:
 
-        self.columns = [
-            "Kunde", "Typ-Kurzbezeichung", "Fertigungsdatum", "Prüfer", "Prüfungsdatum", "Musternummer", "Prüfnummer",
-            "Prüfling-Nr", "Bemerkung", "Prüfaufbau", "Bemerkung", "Prüfvorschrift", "Prüfspannung", "Test dauer",
-            "Prüf-Art", "Mikrofon Abstand", "Drehrichtung", "Drehzahl", "Luftschall-Summegrenzwert",
-            "Luftschall-Summe-Straffrequenz", "Luftschall-Summe-Endfrequenz"
-        ]
+        # Dokumentation
+        # 1.Kunde==‘Kunden‘
+        # 2,Tpy-kurzbezeichnung==‘Typ‘
+        # 3.Fertigungsdatum自己输入
+        # 4.Prüfer 自己输入
+        # 5.Prüfungsdatum==‘Prüfdatum‘
+        # 6.Prüfung==‘Type of Measurment ‘
+        # 7.Musternummer== ‘Musternummer’
+        # 8.Prüfnummer  自己输入
+
+        # Prüfling
+        # 1.	Prüfling-Nr.==Prüfdatum_Musternummer_W711Bue_空着
+        # 2.	Bemerkung 自己输入
+        #
+        # Prüfaufbau
+        # 1.	Prüfaufbau
+        # 2.	Last==‘SOLL Prüflast BODY ‘
+        #
+        # Prüfvorgabe
+        # 1.	Prüfvorschrift==‘PV-Nummer ‘
+        # 2.	Prüfspannung==‘SOLL Prüfspannung AIR ‘
+        # 3.	Test dauer==‘Prüfzeit IST AIR ‘
+        # 4.	Prüf-Art dropdawn 自己输入
+        # 5.	Mikrofon Abstand==‘SOLL MikrofonAbstand AIR ‘
+        # 6.	Drehrichtung==‘Drehrichtung ‘
+        # 7.	Drehzahl==‘SOLL Drehzahl BODY ‘
+        #
+        # Toleranzprüfung
+        # 1.	Luftschall-Summengrenzwert==‘Summenpegel SOLL AIR ‘
+        # 2.	Luftschall-Summe-Straffrequenz==‘Frequenzband min AIR ‘
+        # 3.	Luftschall-Summe-Endfrequenz==‘Frequenzband Max AIR‘
+
         self.test_typs = ["A", "Q", "Z", "Null-Serie", "Claim（TKU）", "Sonder", "BlockForce"]
-        self.data = self.generate_mock_data()  # 生成 1000 条测试数据
-        self.df = pd.DataFrame(self.data, columns=self.columns)  # 创建 pandas DataFrame
+        self.column_mapping = {
+            "Prüfnummer": "Prüfnummer",
+            "Motorsachnummer": "Motorsachnummer",
+            "Prüfdatum": "Prüfungsdatum",
+            "Kunde": "Kunden",
+            "Typ-Kurzbezeichung": "Typ",
+            "Prüfungsdatum": "Prüfdatum",
+            "Musternummer": "Musternummer",
+            "Prüfling-Nr": "Prüfdatum_Musternummer_W711Bue_空着",
+            "Last": "SOLL Prüflast BODY",
+            "Prüfvorschrift": "PV-Nummer",
+            "Prüfspannung": "SOLL Prüfspannung AIR",
+            "Test dauer": "Prüfzeit IST AIR",
+            "Mikrofon Abstand": "SOLL MikrofonAbstand AIR",
+            "Drehrichtung": "Drehrichtung",
+            "Drehzahl": "SOLL Drehzahl BODY",
+            "Luftschall-Summegrenzwert": "Summenpegel SOLL AIR",
+            "Luftschall-Summe-Straffrequenz": "Frequenzband min AIR",
+            "Luftschall-Summe-Endfrequenz": "Frequenzband Max AIR"
+        }
+
+        self.column_mapping_reverse = {v: k for k, v in self.column_mapping.items()}
+        self.display_columns = [
+            "Prüfnummer", "Motorsachnummer", "Prüfdatum", "Type of Measurment", "Musternummer", "PV-Nummer"
+        ]
+        self.df = self.generate_mock_data()  # 创建 pandas DataFrame
+        # 重命名
+        self.df.rename(columns=self.column_mapping_reverse, inplace=True)
+        self.filtered_df = pd.DataFrame()
+        # 展示页的数据
         self.items_per_page = 50  # 每页显示 50 条
         self.current_page = 1  # 当前页数
-        self.total_pages = (len(self.data) + self.items_per_page - 1) // self.items_per_page  # 计算总页数
+        self.total_pages = (len(self.df) + self.items_per_page - 1) // self.items_per_page  # 计算总页数
+        self.current_page_data = self.df[:self.items_per_page]  # 当前页的数据
         self.create_order_query_page()
 
     def create_order_query_page(self):
@@ -59,10 +115,10 @@ class OrderQueryPage:
         top_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
 
         # 输入框和下拉框
-        ttk.Label(top_frame, text="Test Number:", font=("Arial", 12)).grid(row=0, column=0, padx=10, pady=10,
-                                                                           sticky="e")
-        self.sachnummer_entry = ttk.Entry(top_frame, font=("Arial", 12), width=30)
-        self.sachnummer_entry.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+        ttk.Label(top_frame, text="Motorsachnummer:", font=("Arial", 12)).grid(row=0, column=0, padx=10, pady=10,
+                                                                               sticky="e")
+        self.motorsachnummer_entry = ttk.Entry(top_frame, font=("Arial", 12), width=30)
+        self.motorsachnummer_entry.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
         ttk.Label(top_frame, text="Type of Measurement:", font=("Arial", 12)).grid(row=0, column=2, padx=10, pady=10,
                                                                                    sticky="e")
@@ -71,9 +127,21 @@ class OrderQueryPage:
                                            values=self.test_typs)
         self.test_typ_entry.grid(row=0, column=3, padx=10, pady=10, sticky="w")
 
+        # 清空按钮
+        clear_button = ttk.Button(top_frame, text="Clear", command=self.clear_query)
+        clear_button.grid(row=0, column=4, padx=10, pady=10, sticky="w")
+
         # 查询按钮
         query_button = ttk.Button(top_frame, text="Query", command=self.query_order)
-        query_button.grid(row=0, column=4, padx=10, pady=10, sticky="w")
+        query_button.grid(row=0, column=5, padx=10, pady=10, sticky="w")
+
+        # 导入文件按钮
+        import_button = ttk.Button(top_frame, text="Import File", command=self.import_file)
+        import_button.grid(row=0, column=6, padx=10, pady=10, sticky="w")
+
+        # 导出文件按钮
+        export_button = ttk.Button(top_frame, text="Export File", command=self.export_file)
+        export_button.grid(row=0, column=7, padx=10, pady=10, sticky="w")
 
         # 设置全局的表格行高
         style = ttk.Style()
@@ -88,6 +156,16 @@ class OrderQueryPage:
         # 添加翻页按钮和分页信息
         self.create_pagination_controls()
 
+    def clear_query(self):
+        self.motorsachnummer_entry.delete(0, tk.END)
+        self.test_typ_entry.set("")
+        self.current_page = 1
+        self.total_pages = (len(self.df) + self.items_per_page - 1) // self.items_per_page
+        self.current_page_data = self.df[:self.items_per_page]
+        self.filtered_df = pd.DataFrame()
+        self.populate_table()
+        self.update_pagination_buttons()
+
     def create_table(self):
         # 创建表格 (ttk.Treeview)
         style = ttk.Style()
@@ -100,9 +178,9 @@ class OrderQueryPage:
             font=("Arial", 8, "bold"),
             relief="solid", )
 
-        self.tree = ttk.Treeview(self.frame, columns=self.columns, show="headings")
+        self.tree = ttk.Treeview(self.frame, columns=self.display_columns, show="headings")
 
-        for col in self.columns:
+        for col in self.display_columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, anchor="center", )
 
@@ -136,153 +214,121 @@ class OrderQueryPage:
         # 计算当前页显示的数据
         start_index = (self.current_page - 1) * self.items_per_page
         end_index = start_index + self.items_per_page
-        current_page_data = self.data[start_index:end_index]
-
+        if not self.filtered_df.empty:
+            current_page_data = self.filtered_df[start_index:end_index]
+        else:
+            current_page_data = self.df[start_index:end_index]
+        current_page_data.fillna("", inplace=True)
         # 填充当前页数据
-        for row in current_page_data:
+        for index, row in current_page_data.iterrows():
+            row = row.tolist()
             self.tree.insert("", "end", values=row)
 
     def on_row_double_click(self, event):
         # 获取双击的行
-        item = self.tree.selection()[0]
+        items = self.tree.selection()
+        if not items:
+            return
+        item = items[0]
         row_data = self.tree.item(item, "values")
+        # 获取测试id
+        test_id = row_data[0]  # Prüfnummer
+        # 从数据集中获取完整的行数据
+        row_data = self.df[self.df["Prüfnummer"] == test_id]
+        # 转字典
+        row_data = row_data.to_dict(orient="records")[0]
 
         # 创建一个新的窗口
         edit_window = tk.Toplevel(self.frame)
 
-        # 不能调整窗口大小
+        # 设置窗口大小和布局
         edit_window.resizable(False, False)
         edit_window.title("Edit Row Data")
 
         # 不可编辑字段的列表
         readonly_fields = [
-            "Kunde", "Typ-Kurzbezeichung", "Prüfer", "Prüfungsdatum", "Musternummer", "Prüfnummer",
+            "Motorsachnummer","Kunde", "Typ-Kurzbezeichung", "Prüfer", "Prüfungsdatum", "Musternummer", "Prüfnummer",
             "Prüfling-Nr", "Prüfvorschrift", "Prüfspannung", "Test dauer",
             "Prüf-Art", "Mikrofon Abstand", "Drehrichtung", "Drehzahl", "Luftschall-Summegrenzwert",
             "Luftschall-Summe-Straffrequenz", "Luftschall-Summe-Endfrequenz"
         ]
 
-        # 第一部分: Dokumentation
-        tk.Label(edit_window, text="Dokumentation").grid(row=0, column=0, columnspan=2, padx=10, pady=5)
+        # 用于存储所有输入框，以便在保存时提取数据
+        entries = {}
 
-        labels_part_1 = ["Kunde", "Typ-Kurzbezeichung", "Fertigungsdatum", "Prüfer", "Prüfungsdatum", "Musternummer",
-                         "Prüfnummer"]
-        entries_part_1 = {}
-        for idx, label in enumerate(labels_part_1):
-            tk.Label(edit_window, text=label).grid(row=idx + 1, column=0, padx=10, pady=5)
-            entry = tk.Entry(edit_window)
-            entry.grid(row=idx + 1, column=1, padx=10, pady=5)
-            entry.insert(0, row_data[idx])
-            if label in readonly_fields:
-                entry.config(state="readonly")
-            entries_part_1[label] = entry
+        # 设置每个部分的标签和字段
+        sections = {
+            "Dokumentation": ["Motorsachnummer","Kunde", "Typ-Kurzbezeichung", "Fertigungsdatum", "Prüfer", "Prüfungsdatum",
+                              "Musternummer", "Prüfnummer"],
+            "Prüfling": ["Prüfling-Nr", "Prüfling Bemerkung"],
+            "Prüfaufbau": ["Prüfaufbau", "Prüfaufbau Bemerkung"],
+            "Prüfvorgaben": ["Prüfvorschrift", "Prüfspannung", "Test dauer", "Prüf-Art", "Mikrofon Abstand",
+                             "Drehrichtung", "Drehzahl"],
+            "Toleranzprüfung": ["Luftschall-Summegrenzwert", "Luftschall-Summe-Straffrequenz",
+                                "Luftschall-Summe-Endfrequenz"]
+        }
 
-        # 第二部分: Prüfling
-        tk.Label(edit_window, text="Prüfling").grid(row=len(labels_part_1) + 1, column=0, columnspan=2, padx=10, pady=5)
+        # 创建每个部分的框架
+        for section, labels in sections.items():
+            # 添加分区标题
+            frame_section = tk.Frame(edit_window, padx=10, pady=10, relief="groove", borderwidth=2)
+            frame_section.pack(fill="x")
 
-        labels_part_2 = ["Prüfling-Nr", "Bemerkung"]
-        entries_part_2 = {}
-        for idx, label in enumerate(labels_part_2):
-            tk.Label(edit_window, text=label).grid(row=len(labels_part_1) + idx + 2, column=0, padx=10, pady=5)
-            entry = tk.Entry(edit_window)
-            entry.insert(0, row_data[len(labels_part_1) + idx])
-            if label in readonly_fields:
-                entry.config(state="readonly")
-            entries_part_2[label] = entry
-            entry.grid(row=len(labels_part_1) + idx + 2, column=1, padx=10, pady=5)
+            # 设置分区标题
+            tk.Label(frame_section, text=section, font=('Arial', 10, 'bold')).grid(row=0, column=0, columnspan=4,
+                                                                                   sticky="w")
 
+            # 水平布局每个字段
+            for idx, label in enumerate(labels):
+                tk.Label(frame_section, text=label).grid(row=1 + idx // 2, column=(idx % 2) * 2, padx=5, pady=5,
+                                                         sticky="w")
+                if section == "Prüfaufbau" and label == "Prüfaufbau":
+                    # 添加下拉框
+                    entry = ttk.Combobox(frame_section, width=30, values=["Schaum", "frei aufgehängt", "Unter Last"])
+                    entry.grid(row=1 + idx // 2, column=(idx % 2) * 2 + 1, padx=5, pady=5)
+                    entry.set(row_data.get(label, ""))
+                else:
+                    entry = tk.Entry(frame_section, width=30)
+                    entry.grid(row=1 + idx // 2, column=(idx % 2) * 2 + 1, padx=5, pady=5)
+                    entry.insert(0, row_data.get(label, ""))  # 填充数据
 
-        # 第三部分: Prüfaufbau
-        tk.Label(edit_window, text="Prüfaufbau").grid(row=len(labels_part_1) + len(labels_part_2) + 2, column=0,
-                                                      columnspan=2, padx=10, pady=5)
+                # 如果是只读字段
+                if label in readonly_fields:
+                    entry.config(state="readonly")
 
-        labels_part_3 = ["Prüfaufbau", "Bemerkung"]
-        entries_part_3 = {}
+                # 保存每个字段的输入框到 entries 字典中
+                entries[label] = entry
 
-        for idx, label in enumerate(labels_part_3):
-            tk.Label(edit_window, text=label).grid(row=len(labels_part_1) + len(labels_part_2) + idx + 3, column=0,
-                                                   padx=10, pady=5)
-            if label == "Prüfaufbau":
-                options = ["Schaum", "frei aufgehängt", "Unter Last"]
-                entry = ttk.Combobox(edit_window, values=options)
-
-            else:
-                entry = tk.Entry(edit_window)
-            entry.insert(0, row_data[len(labels_part_1) + len(labels_part_2) + idx])
-            if label in readonly_fields:
-                entry.config(state="readonly")  # 设置为只读状态
-            entry.grid(row=len(labels_part_1) + len(labels_part_2) + idx + 3, column=1, padx=10, pady=5)
-            entries_part_3[label] = entry
-
-        # 第四部分: Prüfvorgaben
-        tk.Label(edit_window, text="Prüfvorgaben").grid(
-            row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + 3, column=0, columnspan=2, padx=10,
-            pady=5)
-
-        labels_part_4 = ["Prüfvorschrift", "Prüfspannung", "Test dauer", "Prüf-Art", "Mikrofon Abstand", "Drehrichtung",
-                         "Drehzahl"]
-        entries_part_4 = {}
-        for idx, label in enumerate(labels_part_4):
-            tk.Label(edit_window, text=label).grid(
-                row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + idx + 4, column=0, padx=10, pady=5)
-            entry = tk.Entry(edit_window)
-            entry.insert(0, row_data[len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + idx])
-            if label in readonly_fields:
-                entry.config(state="readonly")
-            entry.grid(row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + idx + 4, column=1, padx=10,
-                       pady=5)
-            entries_part_4[label] = entry
-
-        # 第五部分: Toleranzprüfung
-        tk.Label(edit_window, text="Toleranzprüfung").grid(
-            row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + len(labels_part_4) + 4, column=0,
-            columnspan=2, padx=10, pady=5)
-
-        labels_part_5 = ["Luftschall-Summegrenzwert", "Luftschall-Summe-Straffrequenz", "Luftschall-Summe-Endfrequenz"]
-        entries_part_5 = {}
-        for idx, label in enumerate(labels_part_5):
-            tk.Label(edit_window, text=label).grid(
-                row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + len(labels_part_4) + idx + 5,
-                column=0, padx=10, pady=5)
-            entry = tk.Entry(edit_window)
-            entry.insert(0, row_data[
-                len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + len(labels_part_4) + idx])
-            if label in readonly_fields:
-                entry.config(state="readonly")
-            entry.grid(row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + len(labels_part_4) + idx + 5,
-                       column=1, padx=10, pady=5)
-            entries_part_5[label] = entry
-
-        # 保存按钮
+        # 保存按钮的布局
         def save_data():
-            # 获取新的数据
-            new_data = [
-                *[entries_part_1[label].get() for label in labels_part_1],
-                *[entries_part_2[label].get() for label in labels_part_2],
-                *[entries_part_3[label].get() for label in labels_part_3],
-                *[entries_part_4[label].get() for label in labels_part_4],
-                *[entries_part_5[label].get() for label in labels_part_5]
-            ]
+            # 从每个输入框中提取新数据
+            new_data = {}
+            for label, entry in entries.items():
+                if entry.cget("state") == "readonly":
+                    continue
+                elif entry.get() in ["NaN", "nan", None, ""]:
+                    new_data[label] = ""
+                else:
+                    new_data[label] = entry.get()
 
-            # 更新 Treeview 中的内容
-            self.tree.item(item, values=new_data)
+            # 更新数据框中的对应行
+            for label, value in new_data.items():
+                self.df.loc[self.df["Prüfnummer"] == test_id, label] = value
 
-            # 更新 DataFrame 中对应的行
-            row_index = self.tree.index(item) + (self.current_page - 1) * self.items_per_page  # 找到在原 DataFrame 中的索引
-            self.df.loc[row_index] = new_data  # 使用新的数据更新 DataFrame
+            # 更新 Treeview 显示
+            self.populate_table()
 
             # 关闭编辑窗口
             edit_window.destroy()
             print("Data saved successfully")
 
         save_button = tk.Button(edit_window, text="Save", command=save_data)
-        save_button.grid(row=len(labels_part_1) + len(labels_part_2) + len(labels_part_3) + len(labels_part_4) + len(
-            labels_part_5) + 5, column=0, columnspan=2, pady=10)
+        save_button.pack(pady=20)
 
-        # 弹出窗口居中显示
-        edit_window.transient(self.frame.master)  # 使用根窗口作为父窗口
+        # 居中窗口
+        edit_window.transient(self.frame.master)
         edit_window.grab_set()
-        edit_window.wait_window()  # 确保窗口显示后再关闭
+        edit_window.wait_window()
 
     def create_pagination_controls(self):
         # 创建翻页控件
@@ -343,27 +389,36 @@ class OrderQueryPage:
         # 生成 1000 条数据
         data = []
         for i in range(1000):
-            data.append([
-                f"Customer-{i}", random.choice(self.test_typs), f"2021-01-{i + 1}", f"Tester-{i}", f"2021-01-{i + 1}",
-                f"Pattern-{i}", f"Test-{i}", f"Test-{i}", f"Remark-{i}", random.choice(["Schaum", "frei aufgehängt", "Unter Last"]),
-                f"Remark-{i}", f"Test-{i}", f"Voltage-{i}", f"Duration-{i}", f"Type-{i}", f"Distance-{i}", f"Direction-{i}",
-                f"Speed-{i}", f"Limit-{i}", f"Frequency-{i}", f"End-{i}"
-            ])
+            dic = {}
+            for display_column in self.column_mapping.keys():
+                if display_column == "Prüfnummer":
+                    dic[display_column] = f"Test-{i}"
+                elif display_column == "Type of Measurment":
+                    dic[display_column] = random.choice(self.test_typs)
+                else:
+                    dic[display_column] = random.randint(1000, 9999)
+
+            data.append(dic)
+        data = pd.DataFrame(data)
+        # "Fertigungsdatum", "Bemerkung", "Prüfaufbau"
+        data["Prüfungsdatum"] = pd.to_datetime(data["Prüfungsdatum"], unit="D", origin="2021-01-01")
+        data["Prüfling Bemerkung"] = ""
+        data["Prüfaufbau Bemerkung"] = ""
         return data
 
     def query_order(self):
         # 获取输入内容
-        motor_serial = self.sachnummer_entry.get()  # 获取 Motor Serial Number
+        motor_serial = self.motorsachnummer_entry.get()  # 获取 Motor Serial Number
         test_typ = self.test_typ_entry.get()
 
         # 如果两个输入框都有值，则使用 pandas 筛选
         if motor_serial and test_typ:
-            filtered_df = self.df[(self.df["Motor Serial Number"].str.contains(motor_serial)) & (
-                    self.df["Type of Measurement"] == test_typ)]
+            self.filtered_df = self.df[(self.df["Motorsachnummer"] == motor_serial) & (
+                    self.df["Type of Measurment"] == test_typ)]
 
-            if not filtered_df.empty:
-                self.data = filtered_df.values.tolist()  # 转换为列表以显示
-                self.total_pages = (len(self.data) + self.items_per_page - 1) // self.items_per_page
+            if not self.filtered_df.empty:
+                self.current_page_data = self.filtered_df[:self.items_per_page]
+                self.total_pages = (len(self.filtered_df) + self.items_per_page - 1) // self.items_per_page
                 self.current_page = 1  # 重新从第一页开始显示
                 self.populate_table()  # 更新表格
                 self.update_pagination_buttons()  # 更新翻页控件状态
@@ -373,13 +428,75 @@ class OrderQueryPage:
         else:
             messagebox.showwarning("warn", "Please enter complete query information")
 
-    def import_data(self):
-        file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+    def refresh_table(self):
+        # 清空表格
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+        self.df.fillna("", inplace=True)
+        # 获取当前页数据
+        start_idx = (self.current_page - 1) * self.items_per_page
+        end_idx = start_idx + self.items_per_page
+        page_data = self.df.iloc[start_idx:end_idx]
+
+        # 插入新数据
+        for _, row in page_data.iterrows():
+            self.tree.insert("", "end", values=row.tolist())
+
+    def import_file(self):
+        # 打开文件选择对话框，限制文件类型为 xlsx 和 csv
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Excel files", "*.xlsx"), ("CSV files", "*.csv")],
+            title="Select a file"
+        )
         if file_path:
-            self.df = pd.read_csv(file_path)
-            self.data = self.df.values.tolist()
-            self.total_pages = (len(self.data) + self.items_per_page - 1) // self.items_per_page
-            self.current_page = 1
-            self.populate_table()
-            self.update_pagination_buttons()
-            messagebox.showinfo("info", "Data imported successfully")
+            try:
+                if file_path.endswith('.xlsx'):
+                    # 读取 Excel 文件
+                    new_data = pd.read_excel(file_path)
+                elif file_path.endswith('.csv'):
+                    # 读取 CSV 文件
+                    with open(file_path, 'rb') as f:
+                        result = chardet.detect(f.read())
+                        encoding = result['encoding']
+                    new_data = pd.read_csv(file_path, encoding=encoding)
+                else:
+                    messagebox.showerror("Error", "Unsupported file format.")
+                    return
+                self.df = new_data  # 更新 DataFrame
+                self.df.rename(columns=self.column_mapping_reverse, inplace=True)  # 重命名列
+                self.current_page = 1  # 重置到第一页
+                self.total_pages = (len(self.df) + self.items_per_page - 1) // self.items_per_page
+                self.refresh_table()  # 刷新表格
+                messagebox.showinfo("Success", "File imported successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred while importing the file:\n{e}")
+
+    def export_file(self):
+        # 打开文件保存对话框，限制文件类型为 xlsx 和 csv
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",  # 默认文件扩展名
+            filetypes=[("Excel files", "*.xlsx"), ("CSV files", "*.csv")],
+            title="Save the file as"
+        )
+
+        if file_path:
+            print(file_path)
+            try:
+                if not (file_path.endswith('.xlsx') or file_path.endswith('.csv')):
+                    # 根据选定的文件类型自动添加扩展名
+                    if file_path.endswith('.xlsx'):
+                        file_path += '.xlsx'
+                    else:
+                        file_path += '.csv'
+                self.df.rename(columns=self.column_mapping, inplace=True)  # 重命名列
+                self.df.fillna("", inplace=True)  # 填充空值
+                if file_path.endswith('.xlsx'):
+                    # 导出为 Excel 文件
+                    self.df.to_excel(file_path, index=False)
+                elif file_path.endswith('.csv'):
+                    # 导出为 CSV 文件
+                    self.df.to_csv(file_path, index=False, encoding='utf-8-sig')
+
+                messagebox.showinfo("Success", "File exported successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred while exporting the file:\n{e}")
