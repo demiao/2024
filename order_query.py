@@ -6,6 +6,8 @@ import pandas as pd
 import chardet
 
 
+
+
 class OrderQueryPage:
     def __init__(self, frame):
         self.frame = frame
@@ -143,6 +145,10 @@ class OrderQueryPage:
         export_button = ttk.Button(top_frame, text="Export File", command=self.export_file)
         export_button.grid(row=0, column=7, padx=10, pady=10, sticky="w")
 
+        # 导出hatx文件按钮
+        export_button = ttk.Button(top_frame, text="Export Hatx File", command=self.export_hatx_file)
+        export_button.grid(row=0, column=8, padx=10, pady=10, sticky="w")
+
         # 设置全局的表格行高
         style = ttk.Style()
         style.configure("Treeview", rowheight=40)
@@ -247,7 +253,7 @@ class OrderQueryPage:
 
         # 不可编辑字段的列表
         readonly_fields = [
-            "Motorsachnummer","Kunde", "Typ-Kurzbezeichung", "Prüfer", "Prüfungsdatum", "Musternummer", "Prüfnummer",
+            "Motorsachnummer", "Kunde", "Typ-Kurzbezeichung", "Prüfer", "Prüfungsdatum", "Musternummer", "Prüfnummer",
             "Prüfling-Nr", "Prüfvorschrift", "Prüfspannung", "Test dauer",
             "Prüf-Art", "Mikrofon Abstand", "Drehrichtung", "Drehzahl", "Luftschall-Summegrenzwert",
             "Luftschall-Summe-Straffrequenz", "Luftschall-Summe-Endfrequenz"
@@ -258,7 +264,8 @@ class OrderQueryPage:
 
         # 设置每个部分的标签和字段
         sections = {
-            "Dokumentation": ["Motorsachnummer","Kunde", "Typ-Kurzbezeichung", "Fertigungsdatum", "Prüfer", "Prüfungsdatum",
+            "Dokumentation": ["Motorsachnummer", "Kunde", "Typ-Kurzbezeichung", "Fertigungsdatum", "Prüfer",
+                              "Prüfungsdatum",
                               "Musternummer", "Prüfnummer"],
             "Prüfling": ["Prüfling-Nr", "Prüfling Bemerkung"],
             "Prüfaufbau": ["Prüfaufbau", "Prüfaufbau Bemerkung"],
@@ -498,5 +505,55 @@ class OrderQueryPage:
                     self.df.to_csv(file_path, index=False, encoding='utf-8-sig')
 
                 messagebox.showinfo("Success", "File exported successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred while exporting the file:\n{e}")
+
+    def export_hatx_file(self):
+        import clr
+        # clr.AddReference("System")
+        import System
+        import sys
+
+        sys.path.append(r'C:\Program Files\HEAD System Integration and Extension (ASX)')
+        clr.AddReference('HEADacoustics.API.Documentation')
+        clr.AddReference('HEADacoustics.API.License')
+
+        import HEADacoustics.API.Documentation as ASX05
+        from HEADacoustics.API.License import License, ProductCode
+        license_ = License.Create([ProductCode.ASX_05_DocumentationAndMetadataAPI])
+
+        # 打开文件保存对话框，限制文件类型为 xlsx 和 csv
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".hatx",  # 默认文件扩展名
+            filetypes=[("Hatx files", "*.hatx")],
+            title="Save the file as"
+        )
+
+        if file_path:
+            print(file_path)
+            try:
+                if not (file_path.endswith('.hatx')):
+                    # 根据选定的文件类型自动添加扩展名
+                    if file_path.endswith('.hatx'):
+                        file_path += '.hatx'
+                self.df.rename(columns=self.column_mapping, inplace=True)  # 重命名列
+                self.df.fillna("", inplace=True)  # 填充空值
+
+                hatx_outPath = r'C:\temp\Example'
+                inDoc = ASX05.Documentation.Create('Created by API')
+
+                for index, row in self.df.iterrows():
+                    row = row.tolist()
+                    for k, v in row.items():
+                        textField = ASX05.TextField.Create(k, v)
+                        inDoc.AddField(textField)
+                isWritten = ASX05.DocumentationWriter.WriteDirectoryDocumentation(inDoc, hatx_outPath)
+                license_.Dispose()
+                if isWritten:
+                    print("数据已成功写入 .hatx 文件！")
+                    messagebox.showinfo("Success", "File exported successfully!")
+                else:
+                    print("写入 .hatx 文件时出现问题。")
+                    messagebox.showerror("Error", "An error occurred while exporting the file:\n")
             except Exception as e:
                 messagebox.showerror("Error", f"An error occurred while exporting the file:\n{e}")
